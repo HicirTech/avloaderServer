@@ -1,0 +1,52 @@
+services:
+  avloader:
+    build:
+      context: .
+      dockerfile: dockerfile
+      args:
+        CURL_IMPERSONATE_VERSION: ${CURL_IMPERSONATE_VERSION:-v2.0.0}
+    image: avloader:latest
+    container_name: avloader
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-5000}:5000"
+    environment:
+      PORT: "5000"
+      # The cookie is supplied per-request by the caller, so nothing secret lives
+      # here. What does live here is the browser identity the cookie was minted
+      # with — Cloudflare binds cf_clearance to the exact User-Agent string, so
+      # these must be kept in step with the browser you copy cookies from.
+      CURL_IMPERSONATE_TARGET: ${CURL_IMPERSONATE_TARGET:-}
+      JAVDB_UA: ${JAVDB_UA:-}
+      JAVDB_SEC_CH_UA: ${JAVDB_SEC_CH_UA:-}
+      JAVDB_SEC_CH_UA_PLATFORM: ${JAVDB_SEC_CH_UA_PLATFORM:-}
+      JAVDB_ACCEPT_LANGUAGE: ${JAVDB_ACCEPT_LANGUAGE:-}
+      JAVDB_TIMEOUT_MS: ${JAVDB_TIMEOUT_MS:-}
+      # "4", "6" or "auto". Cloudflare binds cf_clearance to the client address,
+      # and a machine's IPv4 and IPv6 are different addresses. This container has
+      # no IPv6 unless you enable it below, so a cookie minted by a dual-stack
+      # browser (which prefers IPv6) will be rejected here. See .env.example.
+      JAVDB_IP_VERSION: ${JAVDB_IP_VERSION:-}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Containers get no IPv6 by default, and that breaks cf_clearance: javdb.com has
+# AAAA records, so a dual-stack browser mints the cookie over IPv6, and an
+# IPv4-only container is a different client address as far as Cloudflare is
+# concerned. Measured: Cloudflare binds the clearance to the IPv6 /64 prefix,
+# not the exact address, so any machine sharing the browser's /64 can use the
+# cookie — but only if it actually reaches javdb over IPv6.
+#
+# The ULA subnet below is NAT66'd to the host's global IPv6 by Docker (>= 27),
+# so this needs no daemon.json change. If the host has no IPv6 at all, drop this
+# block and set JAVDB_IP_VERSION=4 — then the cookie must be minted over IPv4
+# too, which also means the browser and this host must share one NAT address.
+networks:
+  default:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd00:a71:ade7::/64
