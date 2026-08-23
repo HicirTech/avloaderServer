@@ -12,11 +12,15 @@ import { parse } from "node-html-parser";
 import { ParseError } from "./errors";
 
 const SELECTORS = {
-  /** The container is present even when it holds no results. */
+  /** Absent entirely when the search matched nothing -- see parseSearchPage. */
   list: ".movie-list",
   item: ".item > a",
   /** javdb prints the code under each result. */
   code: ".video-title strong",
+  /** javdb's explicit no-results marker, "暫無內容". */
+  emptyMessage: ".empty-message",
+  /** The search box, present on any search page whether or not it matched. */
+  searchBar: "#video-search",
 } as const;
 
 export interface SearchHit {
@@ -41,8 +45,15 @@ export const parseSearchPage = (html: string, searchUrl: string): SearchHit[] =>
   const root = parse(html);
 
   if (!root.querySelector(SELECTORS.list)) {
+    // A search that matched nothing renders no list at all, only "暫無內容", so
+    // the absence of a list is not by itself evidence of drift. The empty
+    // marker, or failing that the search box, is what proves this really was a
+    // search page and the name really is missing.
+    if (root.querySelector(SELECTORS.emptyMessage) || root.querySelector(SELECTORS.searchBar)) {
+      return [];
+    }
     throw new ParseError(
-      `no results container on ${searchUrl}; this was not a javdb search page, so the name cannot be called missing`,
+      `no results container and no search box on ${searchUrl}; this was not a javdb search page, so the name cannot be called missing`,
     );
   }
 
