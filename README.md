@@ -140,14 +140,16 @@ tests/
 ```
 
 Every javdb-specific selector lives in one block at the top of `detail-page.ts` or
-`search-page.ts`, so a site redesign is a one-file fix. The movie-page selectors are pinned by
-four whole saved pages in `tests/fixtures/`. The search-page ones are not: no real search page has
-been saved yet, and those tests use hand-written markup that mirrors the same assumptions the
-parser makes. Save a real one and switch them over.
+`search-page.ts`, so a site redesign is a one-file fix. All of them are pinned by whole saved
+pages in `tests/fixtures/`: four movie pages, a search page with results, and a search page with
+none. The one shape still tested from hand-written markup is a movie page carrying both a
+translated and an original title.
 
 Two behaviours are worth knowing before changing anything. The code is verified twice -- once
 against the search card, then against the movie page's own `番號` -- because javdb's search is
 fuzzy and returns neighbours, and attaching one movie's metadata to another movie's file is worse
-than returning nothing. And a search page that carries no results container at all is a 502, not a
-404: markup drift must not read as "this movie does not exist", or a caller that records finished
-work will mark the name absent for good.
+than returning nothing. And a search page is judged by more than its results container: javdb
+renders no container at all when nothing matched, only an `empty-message`, so the container's
+absence alone is a miss rather than drift. Only a page with neither a container nor a search box
+is a 502 -- markup drift must not read as "this movie does not exist", or a caller that records
+finished work will mark the name absent for good.
