@@ -107,11 +107,33 @@ export const createJavdbClient = (config: Config, throttle: Throttle): JavdbClie
       );
     }
 
-    const [body, stderr, exitCode] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-      proc.exited,
-    ]);
+    // curl's own --max-time should fire first; this is the backstop for a curl
+    // that ignores it or wedges before parsing arguments. Without it a hung
+    // child holds the request open forever.
+    let timedOut = false;
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      proc.kill();
+    }, config.timeoutMs + 2_000);
+
+    let body: string;
+    let stderr: string;
+    let exitCode: number;
+    try {
+      [body, stderr, exitCode] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]);
+    } finally {
+      clearTimeout(deadline);
+    }
+
+    if (timedOut) {
+      throw new TransportError(
+        `${config.curlBin} exceeded ${config.timeoutMs} ms for ${url} and was killed`,
+      );
+    }
 
     const status = Number(/__http_code=(\d+)/.exec(stderr)?.[1] ?? 0);
     const remoteIp = /__remote_ip=(\S+)/.exec(stderr)?.[1] ?? "";
