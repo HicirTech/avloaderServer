@@ -1,5 +1,7 @@
 {
-  "name": "lab",
+  "name": "avloader-server",
+  "version": "1.0.0",
+  "description": "Looks up movie metadata on javdb from behind Cloudflare and returns it as JSON",
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
