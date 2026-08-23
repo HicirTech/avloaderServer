@@ -31,7 +31,6 @@ services:
       # so a misbehaving caller cannot burn the shared clearance cookie.
       JAVDB_MIN_INTERVAL_MS: ${JAVDB_MIN_INTERVAL_MS:-}
       JAVDB_MAX_IN_FLIGHT: ${JAVDB_MAX_IN_FLIGHT:-}
-      JAVDB_TIMEOUT_MS: ${JAVDB_TIMEOUT_MS:-}
     logging:
       driver: json-file
       options:
