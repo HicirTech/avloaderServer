@@ -51,7 +51,7 @@ FROM base AS release
 RUN apk add --no-cache ca-certificates
 COPY --from=curlimp /opt/curl-impersonate/curl-impersonate /usr/local/bin/curl-impersonate
 COPY --from=install /temp/prod/node_modules node_modules
-COPY --from=prerelease /usr/src/app/*.ts ./
+COPY --from=prerelease /usr/src/app/src ./src
 COPY --from=prerelease /usr/src/app/package.json .
 
 ENV PORT=5000
@@ -63,4 +63,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 
 USER bun
 EXPOSE 5000/tcp
-ENTRYPOINT [ "bun", "run", "index.ts" ]
+ENTRYPOINT [ "bun", "run", "src/index.ts" ]
