@@ -25,6 +25,9 @@ import { ClearanceError, RequestError, TransportError } from "./errors";
 const CHALLENGE_RE = /<title>Just a moment|_cf_chl_opt|challenge-platform\/h\/[a-z]\/orchestrate/;
 const BLOCKED_RE = /Sorry, you have been blocked/;
 
+/** Headers are line-delimited; a cookie carrying CR or LF would append its own. */
+const HEADER_INJECTION_RE = /[\r\n\0]/;
+
 export interface FetchOptions {
   /** Whole Cookie header from a browser that loads javdb without a challenge. */
   readonly cookie: string;
@@ -40,6 +43,9 @@ export interface JavdbClient {
 export const cookieProblem = (cookie: string): string | null => {
   if (!cookie) {
     return "no cookie supplied: pass `cookie` in the request body or set JAVDB_COOKIE";
+  }
+  if (HEADER_INJECTION_RE.test(cookie)) {
+    return "cookie contains a newline or NUL, which would forge additional request headers";
   }
   if (!cookie.includes("cf_clearance=")) {
     return "cookie has no cf_clearance: copy the whole Cookie header from a browser that loads javdb.com without a challenge";
