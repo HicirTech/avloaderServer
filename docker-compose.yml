@@ -27,6 +27,11 @@ services:
       # no IPv6 unless you enable it below, so a cookie minted by a dual-stack
       # browser (which prefers IPv6) will be rejected here. See .env.example.
       JAVDB_IP_VERSION: ${JAVDB_IP_VERSION:-}
+      # Requests to javdb are serialised and spaced out by the service itself,
+      # so a misbehaving caller cannot burn the shared clearance cookie.
+      JAVDB_MIN_INTERVAL_MS: ${JAVDB_MIN_INTERVAL_MS:-}
+      JAVDB_MAX_IN_FLIGHT: ${JAVDB_MAX_IN_FLIGHT:-}
+      JAVDB_TIMEOUT_MS: ${JAVDB_TIMEOUT_MS:-}
     logging:
       driver: json-file
       options:
@@ -40,10 +45,18 @@ services:
 # not the exact address, so any machine sharing the browser's /64 can use the
 # cookie — but only if it actually reaches javdb over IPv6.
 #
-# The ULA subnet below is NAT66'd to the host's global IPv6 by Docker (>= 27),
-# so this needs no daemon.json change. If the host has no IPv6 at all, drop this
-# block and set JAVDB_IP_VERSION=4 — then the cookie must be minted over IPv4
-# too, which also means the browser and this host must share one NAT address.
+# The ULA subnet below is NAT66'd to the host's global IPv6 by Docker (>= 27), so
+# this needs no daemon.json change -- but it does need one host change. Enabling
+# it turns on IPv6 forwarding, and with the distro default accept_ra=1 a
+# forwarding host ignores Router Advertisements: a host that gets its global IPv6
+# by SLAAC loses its default route immediately and its address when the lifetime
+# lapses. Before `docker compose up -d`, put this in
+# /etc/sysctl.d/99-docker-ipv6-ra.conf and run `sysctl --system`:
+#     net.ipv6.conf.all.accept_ra = 2
+#     net.ipv6.conf.<uplink>.accept_ra = 2
+# If the host has no IPv6 at all, drop this block and set JAVDB_IP_VERSION=4 --
+# then the cookie must be minted over IPv4 too, which also means the browser and
+# this host must share one NAT address.
 networks:
   default:
     enable_ipv6: true
