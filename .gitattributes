@@ -1,0 +1,4 @@
+# The working tree is edited on Windows; keep the repository itself LF-only so a
+# checkout never shows every file as modified.
+* text=auto eol=lf
+*.lockb binary

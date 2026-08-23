@@ -1,16 +1,17 @@
 {
   "name": "lab",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "bun run index.ts",
-    "dev": "bun --watch index.ts",
-    "typecheck": "tsc --noEmit",
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "typecheck": "bun node_modules/typescript/bin/tsc --noEmit",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f avloader",
-    "docker:rebuild": "docker compose build --no-cache && docker compose up -d --force-recreate"
+    "docker:rebuild": "docker compose build --no-cache && docker compose up -d --force-recreate",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest"
