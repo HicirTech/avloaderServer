@@ -114,13 +114,38 @@ const parseScore = (text: string | null): { rating: number | null; voteCount: nu
 const parseDate = (text: string | null): string | null =>
   text && /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
 
+/** Why no code was found, in enough detail to tell the causes apart. */
+const describeMissingCode = (
+  root: HTMLElement,
+  panels: Map<string, HTMLElement>,
+  sourceUrl: string,
+): string => {
+  const title = clean(root.querySelector("title")?.textContent).slice(0, 80);
+  const labels = [...panels.keys()].slice(0, 12).join(", ");
+
+  if (panels.size === 0) {
+    return (
+      `no metadata panel on ${sourceUrl} (page title: ${title || "none"}). ` +
+      `Either this is not a movie page, or javdb served something else.`
+    );
+  }
+
+  return (
+    `no video code on ${sourceUrl} (page title: ${title || "none"}). ` +
+    `The panel is there with ${panels.size} rows -- ${labels} -- so the code label has been renamed.`
+  );
+};
+
 export const parseDetailPage = (html: string, sourceUrl: string): Movie => {
   const root = parse(html);
   const panels = readPanels(root);
 
   const code = textField(panels, LABELS.code);
   if (!code) {
-    throw new ParseError(`no video code on ${sourceUrl}; javdb markup may have changed`);
+    // Carry the evidence. Without it "markup may have changed" is equally
+    // consistent with a Cloudflare interstitial, a renamed label and a page
+    // that was never a movie, and the three want different responses.
+    throw new ParseError(describeMissingCode(root, panels, sourceUrl));
   }
 
   // javdb shows the translated title as the current one and puts the original

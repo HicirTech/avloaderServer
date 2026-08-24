@@ -128,9 +128,30 @@ describe("shapes no saved page covers", () => {
     expect(movie.releasedAt).toBeNull();
   });
 
+  test("a page with no panel at all says so, and quotes the title", () => {
+    // Tells a Cloudflare interstitial apart from markup drift, which used to
+    // read the same and want a different response.
+    expect(() =>
+      parseDetailPage(
+        `<html><head><title>Just a moment...</title></head><body>_cf_chl_opt</body></html>`,
+        URL_FOR("x"),
+      ),
+    ).toThrow(/no metadata panel .*Just a moment/);
+  });
+
+  test("a renamed code label is reported with the labels that were there", () => {
+    expect(() =>
+      parseDetailPage(
+        page(`<div class="panel-block"><strong>編號:</strong><span class="value">ABC-1</span></div>
+              <div class="panel-block"><strong>日期:</strong><span class="value">2026-01-01</span></div>`),
+        URL_FOR("x"),
+      ),
+    ).toThrow(/code label has been renamed/);
+  });
+
   test("throws ParseError rather than returning a movie with no code", () => {
     expect(() => parseDetailPage(page(`<h2 class="current-title">t</h2>`), URL_FOR("x"))).toThrow(
-      /no video code/,
+      /no metadata panel/,
     );
   });
 
