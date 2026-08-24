@@ -54,6 +54,21 @@ const readHeaders = (stderr: string): Record<string, string> => {
 /** Headers are line-delimited; a cookie carrying CR or LF would append its own. */
 const HEADER_INJECTION_RE = /[\r\n\0]/;
 
+/**
+ * Force javdb's language by setting its `locale` cookie, dropping any the caller
+ * sent so the two do not fight. cf_clearance is unaffected -- it binds to the IP,
+ * User-Agent and TLS fingerprint, not to a sibling cookie. An empty locale leaves
+ * the header untouched.
+ */
+export const withLocale = (cookie: string, locale: string): string => {
+  if (!locale) return cookie;
+  const kept = cookie
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0 && !/^locale=/i.test(part));
+  return [...kept, `locale=${locale}`].join("; ");
+};
+
 export interface FetchOptions {
   /** Whole Cookie header from a browser that loads javdb without a challenge. */
   readonly cookie: string;
@@ -105,7 +120,7 @@ export const createJavdbClient = (config: Config, throttle: Throttle): JavdbClie
       "-H",
       `accept-language: ${config.acceptLanguage}`,
       "-H",
-      `cookie: ${cookie}`,
+      `cookie: ${withLocale(cookie, config.locale)}`,
     ];
 
     if (config.ipVersion === "4") argv.splice(1, 0, "--ipv4");
