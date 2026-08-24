@@ -4,7 +4,10 @@ Whole javdb movie pages, saved from a browser on 2026-08-22, used by
 `tests/detail-page.test.ts` to check the parser against real markup rather than
 markup written from the same assumptions the parser makes.
 
-Each file is named for the video code it contains. Between them they cover one
+Each file is named for the video code it contains. `achj-090-en.html` is an
+English-locale page: javdb serves the metadata panel in the account's language,
+so its labels are ID/Rating/Tags rather than 番號/評分/類別. The parser must read
+both. Between them they cover one
 actor and several, a one-image gallery and a twenty-one-image one, and integer
 and fractional ratings.
 

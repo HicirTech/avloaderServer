@@ -26,6 +26,8 @@ export interface Config {
   readonly secChUa: string;
   readonly secChUaPlatform: string;
   readonly acceptLanguage: string;
+  /** Forced into the Cookie header so javdb serves one language. Empty disables it. */
+  readonly locale: string;
   readonly timeoutMs: number;
   /** "4", "6" or "auto". See .env.example for why this is not cosmetic. */
   readonly ipVersion: string;
@@ -49,7 +51,14 @@ export const loadConfig = (): Config => ({
   ),
   secChUa: str("JAVDB_SEC_CH_UA", '"Not:A-Brand";v="99", "Microsoft Edge";v="152", "Chromium";v="152"'),
   secChUaPlatform: str("JAVDB_SEC_CH_UA_PLATFORM", '"Windows"'),
-  acceptLanguage: str("JAVDB_ACCEPT_LANGUAGE", "en-NZ,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,en-US;q=0.6"),
+  // Chinese-first now: javdb serves the metadata panel in the session language,
+  // and this service exists to return Chinese metadata. Only used when the
+  // locale cookie below is absent -- the cookie is the stronger signal.
+  acceptLanguage: str("JAVDB_ACCEPT_LANGUAGE", "zh-TW,zh;q=0.9,en;q=0.8"),
+  // javdb reads its own `locale` cookie to choose the page language. Forcing it
+  // makes the output independent of whatever language the caller's cookie
+  // carried. Set JAVDB_LOCALE="" to leave the caller's locale untouched.
+  locale: str("JAVDB_LOCALE", "zh"),
   // A floor, not just a default: 0 would otherwise disable every deadline.
   timeoutMs: int("JAVDB_TIMEOUT_MS", 30_000, 1_000),
   ipVersion: str("JAVDB_IP_VERSION", "auto"),

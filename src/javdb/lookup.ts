@@ -63,9 +63,12 @@ export const createLookup = (client: JavdbClient): Lookup => ({
       hit.url,
     );
 
-    if (normalise(movie.code) !== normalise(name)) {
+    // Against the code the search resolved to, not the name asked for: a file
+    // named 328CNSTV-027 is javdb's CNSTV-027, and the page will say so.
+    const expected = hit.code || name;
+    if (normalise(movie.code) !== normalise(expected)) {
       throw new NotFoundError(
-        `javdb has no ${name}; the closest result was ${movie.code} at ${hit.url}`,
+        `javdb has no ${name}; the page at ${hit.url} is ${movie.code}, not ${expected}`,
       );
     }
 
