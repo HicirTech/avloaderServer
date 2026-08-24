@@ -31,15 +31,15 @@ const SELECTORS = {
 
 /** Panel labels, across the language settings javdb serves. */
 const LABELS = {
-  code: ["番號", "番号"],
-  releasedAt: ["日期"],
-  duration: ["時長", "时长"],
-  director: ["導演", "导演"],
-  studio: ["片商"],
-  series: ["系列"],
-  rating: ["評分", "评分"],
-  genres: ["類別", "类别"],
-  actors: ["演員", "演员"],
+  code: ["番號", "番号", "ID"],
+  releasedAt: ["日期", "Released Date"],
+  duration: ["時長", "时长", "Duration"],
+  director: ["導演", "导演", "Director"],
+  studio: ["片商", "Maker"],
+  series: ["系列", "Series"],
+  rating: ["評分", "评分", "Rating"],
+  genres: ["類別", "类别", "Tags"],
+  actors: ["演員", "演员", "Actor(s)"],
 } as const;
 
 /** javdb pads panel values with non-breaking spaces. */
@@ -93,17 +93,19 @@ const textField = (panels: Map<string, HTMLElement>, labels: readonly string[]):
   return text;
 };
 
-/** "140 分鍾" to 140. */
+/** "140 分鍾" or "190 minute(s)" to its number. */
 const parseDuration = (text: string | null): number | null => {
-  const match = text ? /(\d+)\s*分/.exec(text) : null;
+  const match = text ? /(\d+)/.exec(text) : null;
   return match?.[1] ? Number(match[1]) : null;
 };
 
-/** "4.33分, 由101人評價" to its two numbers. */
+/** "4.33分, 由101人評價" or "4.63, by 399 users" to its two numbers. */
 const parseScore = (text: string | null): { rating: number | null; voteCount: number | null } => {
   if (!text) return { rating: null, voteCount: null };
-  const rating = /([\d.]+)\s*分/.exec(text)?.[1];
-  const votes = /(\d+)\s*人/.exec(text)?.[1];
+  // The rating is the first number; the vote count is the one next to a
+  // people-word, in either language.
+  const rating = /([\d.]+)/.exec(text)?.[1];
+  const votes = /(\d+)\s*(?:人|users?)/i.exec(text)?.[1];
   return {
     rating: rating !== undefined ? Number(rating) : null,
     voteCount: votes !== undefined ? Number(votes) : null,

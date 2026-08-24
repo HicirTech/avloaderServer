@@ -32,6 +32,21 @@ describe("against saved javdb pages", () => {
     expect(movie.sourceUrl).toBe(URL_FOR("nykd-145"));
   });
 
+  test("reads an English-locale page whose labels and formats differ", () => {
+    // javdb serves the panel in the account language: without a locale=zh cookie
+    // the labels are ID/Rating/Tags and the rating reads "4.63, by 399 users".
+    const movie = parseFixture("achj-090-en");
+
+    expect(movie.code).toBe("ACHJ-090");
+    expect(movie.releasedAt).toBe("2026-08-25");
+    expect(movie.durationMinutes).toBe(190);
+    expect(movie.director).toBe("真咲南朋");
+    expect(movie.rating).toBe(4.63);
+    expect(movie.voteCount).toBe(399);
+    expect(movie.genres[0]).toBe("Mature Woman");
+    expect(movie.actors).toContain("七海ティナ");
+  });
+
   test("reads a fractional rating and its vote count", () => {
     const movie = parseFixture("jur-100");
     expect(movie.rating).toBe(4.33);
