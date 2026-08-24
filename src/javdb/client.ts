@@ -22,8 +22,34 @@ import { ClearanceError, RequestError, TransportError } from "./errors";
  * so that path alone is not a challenge signal. The orchestrate endpoint and
  * `_cf_chl_opt` are.
  */
-const CHALLENGE_RE = /<title>Just a moment|_cf_chl_opt|challenge-platform\/h\/[a-z]\/orchestrate/;
+const CHALLENGE_RE =
+  /<title>Just a moment|_cf_chl_opt|challenge-platform\/h\/[a-z]\/orchestrate|Enable JavaScript and cookies to continue|Verifying you are human/;
 const BLOCKED_RE = /Sorry, you have been blocked/;
+
+/**
+ * Cloudflare's own word for it, and the only signal that does not depend on
+ * guessing this week's interstitial wording. A challenge can arrive as an
+ * ordinary 200 with a plausible title; this header says what it really is.
+ */
+const MITIGATED_HEADER = "cf-mitigated";
+
+/** Separates the header dump from the fields before it on curl's stderr. */
+const HEADERS_MARK = "__headers__";
+
+/** Response headers from curl's writeout, lower-cased. Empty when there are none. */
+const readHeaders = (stderr: string): Record<string, string> => {
+  const at = stderr.indexOf(HEADERS_MARK);
+  if (at === -1) return {};
+
+  try {
+    const raw = JSON.parse(stderr.slice(at + HEADERS_MARK.length)) as Record<string, string[]>;
+    return Object.fromEntries(
+      Object.entries(raw).map(([name, values]) => [name.toLowerCase(), values.join(", ")]),
+    );
+  } catch {
+    return {};
+  }
+};
 
 /** Headers are line-delimited; a cookie carrying CR or LF would append its own. */
 const HEADER_INJECTION_RE = /[\r\n\0]/;
@@ -66,7 +92,7 @@ export const createJavdbClient = (config: Config, throttle: Throttle): JavdbClie
       // because an unexpected address family is the least obvious way for a
       // clearance to fail.
       "-w",
-      "%{stderr}__http_code=%{http_code} __remote_ip=%{remote_ip}",
+      `%{stderr}__http_code=%{http_code} __remote_ip=%{remote_ip}\n${HEADERS_MARK}%{header_json}`,
       "--max-time",
       String(Math.ceil(config.timeoutMs / 1000)),
       url,
@@ -137,7 +163,11 @@ export const createJavdbClient = (config: Config, throttle: Throttle): JavdbClie
 
     const status = Number(/__http_code=(\d+)/.exec(stderr)?.[1] ?? 0);
     const remoteIp = /__remote_ip=(\S+)/.exec(stderr)?.[1] ?? "";
-    const diagnostics = stderr.replace(/__http_code=\d+ __remote_ip=\S*/, "").trim();
+    const headers = readHeaders(stderr);
+    const marked = stderr.indexOf(HEADERS_MARK);
+    const diagnostics = (marked === -1 ? stderr : stderr.slice(0, marked))
+      .replace(/__http_code=\d+ __remote_ip=\S*/, "")
+      .trim();
 
     if (exitCode !== 0) {
       throw new TransportError(
@@ -151,10 +181,15 @@ export const createJavdbClient = (config: Config, throttle: Throttle): JavdbClie
       );
     }
 
-    if (CHALLENGE_RE.test(body) || status === 403) {
+    const mitigation = headers[MITIGATED_HEADER];
+    if (mitigation !== undefined || CHALLENGE_RE.test(body) || status === 403) {
       const family = remoteIp.includes(":") ? "IPv6" : "IPv4";
+      const why =
+        mitigation !== undefined
+          ? `Cloudflare reported ${MITIGATED_HEADER}: ${mitigation}`
+          : "the response reads as a challenge page";
       throw new ClearanceError(
-        `Cloudflare challenged ${url} (HTTP ${status}), reached over ${family} (${remoteIp}). ` +
+        `Cloudflare challenged ${url} (HTTP ${status}), reached over ${family} (${remoteIp}); ${why}. ` +
           `cf_clearance is missing, expired, or was minted for a different client address or User-Agent. ` +
           `A dual-stack browser usually prefers IPv6 while a container without IPv6 uses IPv4, and those ` +
           `are different addresses -- mint the cookie over ${family} or set JAVDB_IP_VERSION.`,
