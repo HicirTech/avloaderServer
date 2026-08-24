@@ -74,12 +74,31 @@ export const parseSearchPage = (html: string, searchUrl: string): SearchHit[] =>
 const normaliseCode = (code: string): string => code.replace(/[\s_-]/g, "").toUpperCase();
 
 /**
- * The hit whose code is the one asked for, else null.
+ * A file named after a distributor prefix, as in the 328 of 328CNSTV-027.
+ *
+ * Some labels carry the prefix into javdb's own code (259LUXU-1234 really is
+ * called that) and some do not, and the two are indistinguishable by shape --
+ * which is why this is only ever a fallback, never the first thing tried.
+ */
+const withoutNumericPrefix = (code: string): string | null =>
+  /^\d{1,4}([A-Za-z].*)$/.exec(code.trim())?.[1] ?? null;
+
+/**
+ * The hit for the code asked for, else null.
+ *
+ * An exact match wins. Failing that, the same code without a leading numeric
+ * prefix is accepted, but only from the FIRST hit: javdb ranks by relevance, so
+ * a stripped code at the top is its own answer to what the file is, while the
+ * same code further down is just a neighbour.
  *
  * javdb's search is fuzzy and happily returns neighbours, so opening hit zero
- * blindly can attach one movie's metadata to another movie's file.
+ * blindly would attach one movie's metadata to another movie's file.
  */
 export const matchByCode = (hits: readonly SearchHit[], wanted: string): SearchHit | null => {
-  const target = normaliseCode(wanted);
-  return hits.find((hit) => normaliseCode(hit.code) === target) ?? null;
+  const exact = hits.find((hit) => normaliseCode(hit.code) === normaliseCode(wanted));
+  if (exact) return exact;
+
+  const stripped = withoutNumericPrefix(wanted);
+  const first = hits[0];
+  return stripped && first && normaliseCode(first.code) === normaliseCode(stripped) ? first : null;
 };

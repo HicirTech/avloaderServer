@@ -105,3 +105,40 @@ describe("matchByCode", () => {
     expect(matchByCode(hits, "ZZZ-999")).toBeNull();
   });
 });
+
+describe("matchByCode and distributor prefixes", () => {
+  // Real failures: searching 328CNSTV-027 returns CNSTV-027 at the top, and
+  // 393OTIM-684 returns OTIM-684. The prefix is the distributor's, not javdb's.
+  const ranked = [
+    { url: "https://javdb.com/v/a", code: "CNSTV-027" },
+    { url: "https://javdb.com/v/b", code: "CNSTV-007" },
+    { url: "https://javdb.com/v/c", code: "CNSTV-017" },
+  ];
+
+  test("accepts the top hit once the numeric prefix is dropped", () => {
+    expect(matchByCode(ranked, "328CNSTV-027")?.url).toBe("https://javdb.com/v/a");
+  });
+
+  test("prefers an exact match, so a code that really carries digits still wins", () => {
+    // javdb's own code for this label includes the 259.
+    const withPrefix = [
+      { url: "https://javdb.com/v/x", code: "LUXU-1234" },
+      { url: "https://javdb.com/v/y", code: "259LUXU-1234" },
+    ];
+    expect(matchByCode(withPrefix, "259LUXU-1234")?.url).toBe("https://javdb.com/v/y");
+  });
+
+  test("will not take a stripped match from further down the ranking", () => {
+    // Relevance put something else first, so the stripped code is a neighbour
+    // rather than javdb's answer to what this file is.
+    const buried = [
+      { url: "https://javdb.com/v/first", code: "CNSTV-007" },
+      { url: "https://javdb.com/v/second", code: "CNSTV-027" },
+    ];
+    expect(matchByCode(buried, "328CNSTV-027")).toBeNull();
+  });
+
+  test("does not strip when there is no letter after the digits", () => {
+    expect(matchByCode([{ url: "u", code: "027" }], "328027")).toBeNull();
+  });
+});
